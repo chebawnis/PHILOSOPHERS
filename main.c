@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/03 05:45:49 by adichou          ###   ########.fr       */
+/*   Updated: 2025/05/10 18:34:43 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,25 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+typedef struct s_program
+{
+	int		nb_philo;
+	int		time_to_die;
+	int		time_to_eat;
+	int		time_to_sleep;
+	int		nbr_of_time_they_eat;
+	int		should_program_stop;
+}	t_program;
+
+typedef struct s_philosopher
+{
+	int					id;
+	pthread_t			thread;
+	pthread_mutex_t		*l_fork;
+	pthread_mutex_t		*r_fork;
+	t_program			*program;
+}	t_philosopher;
 
 int	ft_atoi(const char *nptr)
 {
@@ -74,7 +93,6 @@ int	isnum(char *str)
 
 int	verify_args(int ac, char **av)
 {
-	printf("ac = %d\n", ac);
 	if (ac != 5 && ac != 6)
 		return (0);
 	if (ft_atoi(av[1]) <= 0 || ft_atoi(av[2]) <= 0
@@ -84,118 +102,113 @@ int	verify_args(int ac, char **av)
 		return (0);
 	if (ac == 6 && (ft_atoi(av[5]) <= 0 || !isnum(av[5])))
 		return (0);
+	if (ft_atoi(av[2]) < 60 || ft_atoi(av[3]) < 60 || ft_atoi(av[4]) < 60)
+		return (0);	
 	return (1);
 }
 
-typedef struct s_timeval
+t_program		*init_program(char **av)
 {
-	time_t			tv_sec;
-	__suseconds_t	tv_usec;
-} t_timeval;
-
-typedef struct s_philosopher
-{
-	int					id;
-	pthread_t			thread;
-	pthread_mutex_t		l_fork;
-	pthread_mutex_t		r_fork;
-}	t_philosopher;
-
-typedef struct s_program
-{
-	int		nb_philo;
-	int		time_to_die;
-	int		time_to_eat;
-	int		time_to_sleep;
-	int		nbr_of_time_they_eat;
-}	t_program;
-
-
-typedef struct s_count_add
-{
-	pthread_mutex_t		lock;
-	int					counter;
-}	t_count_add;
-
-
-void	*function_1(void *arg)
-{
-	int	i;
-
-	i = 0;
-	t_count_add *struct_1;
-	struct_1 = (t_count_add *)arg;
-	while (i < 100000)
-	{
-		pthread_mutex_lock(&(struct_1->lock));
-		struct_1->counter ++;
-		pthread_mutex_unlock(&(struct_1->lock));
-		i ++;
-	}
-	pthread_exit(NULL);
-}
-
-void	*function_2(void *arg)
-{
-	int	i;
-
-	i = 0;
-	t_count_add *struct_1;
-	struct_1 = (t_count_add *)arg;
-	while (i < 100000)
-	{
-		pthread_mutex_lock(&(struct_1->lock));
-		struct_1->counter ++;
-		pthread_mutex_unlock(&(struct_1->lock));
-		i ++;
-	}
-	pthread_exit(NULL);
-}
-
-// int main(int ac, char **av)
-// {
-// 	t_count_add		*struct_1;
+	t_program	*res;
 	
-// 	pthread_t		thread_1;
-// 	pthread_t		thread_2;
+	res = malloc(sizeof(t_program));
+	if (!res)
+		return NULL;
+		res->nb_philo = atoi(av[1]);
+	res->time_to_die = atoi(av[2]);
+	res->time_to_eat = atoi(av[3]);
+	res->time_to_sleep = atoi(av[4]);
+	if (av[5])
+		res->nbr_of_time_they_eat = atoi(av[5]);
+		res->should_program_stop = 0;
+	return (res);
+}
 
-// 	struct_1 = malloc(sizeof(t_count_add));
-// 	pthread_mutex_init(&(struct_1->lock), NULL);
-// 	struct_1->counter = 0;
-		
-// 	pthread_create(&thread_1, NULL, function_1, struct_1);
-// 	pthread_create(&thread_2, NULL, function_2, struct_1);
+void	display_program_struct(t_program *program)
+{
+	printf("nb_philo = %d\n", program->nb_philo);
+	printf("time_to_die = %d\n", program->time_to_die);
+	printf("time_to_eat = %d\n", program->time_to_eat);
+	printf("time_to_sleep = %d\n", program->time_to_sleep);
+	printf("nbr_of_time_they_eat = %d\n", program->nbr_of_time_they_eat);
+}
 
-// 	pthread_join(thread_1, NULL);
-// 	pthread_join(thread_2, NULL);
+pthread_mutex_t	*init_all_forks(int	nbr_of_philosophers)
+{
+	int	i;
+	pthread_mutex_t	*res;
+	
+	i = 0;
+	res = malloc(nbr_of_philosophers * sizeof(pthread_mutex_t));
+	if (!res)
+		return NULL;
+	while (i < nbr_of_philosophers)
+	{
+		pthread_mutex_init(&res[i], NULL);
+		i ++;
+	}
+	return (res);
+}
 
-// 	printf("counter = %d\n", struct_1->counter);
-// 	return (0);
-// }
-
-t_philosopher	*init_all_philosophers(int	nbr_of_philosophers)
+t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab)
 {
 	t_philosopher	*tab;
 	int				i;
 
-	tab = malloc(sizeof(t_philosopher) * nbr_of_philosophers);
+	tab = malloc(sizeof(t_philosopher) * atoi(av[1]));
 	i = 0;
 	if (!tab)
 		return NULL;
-	while (i < nbr_of_philosophers)
+	tab[i].r_fork = &fork_tab[atoi(av[1])];
+	while (i < atoi(av[1]))
 	{
 		tab[i].id = i + 1;
+		tab[i].l_fork = &fork_tab[i + 1];
+		if (i != 0)
+			tab[i].r_fork = &fork_tab[i];
 		i ++;
 	}
-	
 	return (tab);
 }
 
-void	philosophers(char *av)
+void	*run_philo(t_philosopher *philosoph)
 {
-	t_philosopher	*tab;
+	while (1)
+	{
+		printf("Philosopher number %d is eating\n", philosoph->id);
+	}
+	pthread_exit(NULL);
+}
 
-	tab = init_all_philosophers(av[1]);
+void	start_threads(t_philosopher **p_tab, pthread_mutex_t *f_tab, t_program *program)
+{
+	int	i;
+
+	i = 0;
+	while (i < program->nb_philo)
+	{
+		pthread_create((void *)p_tab[i]->thread, NULL, run_philo, p_tab[i]);
+		i ++;
+	}
+	i = 0;
+	while (i < program->nb_philo)
+	{
+		pthread_join(p_tab[i]->thread, NULL);
+		i ++;
+	}
+}
+
+void	philosophers(char **av)
+{
+	t_program		*program;
+	pthread_mutex_t	*fork_tab;
+	t_philosopher	**philo_tab;
+
+	program = init_program(av);
+	display_program_struct(program);
+	fork_tab = init_all_forks(atoi(av[1]));
+	philo_tab = init_all_philosophers(av, fork_tab);
+	start_threads(philo_tab, fork_tab, program);
 }
 
 int main(int ac, char **av)

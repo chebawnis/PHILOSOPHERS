@@ -58,6 +58,7 @@ typedef struct s_program
 	int		time_to_eat;
 	int		time_to_sleep;
 	int		nbr_of_time_they_eat;
+	int		should_program_stop;
 }	t_program;
 
 
@@ -126,6 +127,8 @@ int	verify_args(int ac, char **av)
 		return (0);
 	if (ac == 6 && (ft_atoi(av[5]) <= 0 || !isnum(av[5])))
 		return (0);
+	if (ft_atoi(av[2]) < 60 || ft_atoi(av[3]) < 60 || ft_atoi(av[4]) < 60)
+		return (0);	
 	return (1);
 }
 void	*function_1(void *arg)
@@ -209,6 +212,7 @@ t_program		*init_program(char **av)
 	res->time_to_sleep = atoi(av[4]);
 	if (av[5])
 		res->nbr_of_time_they_eat = atoi(av[5]);
+	res->should_program_stop = 0;
 	return (res);
 }
 
