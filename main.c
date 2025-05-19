@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/10 18:34:43 by adichou          ###   ########.fr       */
+/*   Updated: 2025/05/14 14:12:34 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -171,8 +171,11 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab)
 	return (tab);
 }
 
-void	*run_philo(t_philosopher *philosoph)
+void	*run_philo(void *arg)
 {
+	t_philosopher	*philosoph;
+
+	philosoph = (t_philosopher *)arg;
 	while (1)
 	{
 		printf("Philosopher number %d is eating\n", philosoph->id);
@@ -202,13 +205,13 @@ void	philosophers(char **av)
 {
 	t_program		*program;
 	pthread_mutex_t	*fork_tab;
-	t_philosopher	**philo_tab;
+	t_philosopher	*philo_tab;
 
 	program = init_program(av);
 	display_program_struct(program);
 	fork_tab = init_all_forks(atoi(av[1]));
 	philo_tab = init_all_philosophers(av, fork_tab);
-	start_threads(philo_tab, fork_tab, program);
+	start_threads(&philo_tab, fork_tab, program);
 }
 
 int main(int ac, char **av)
