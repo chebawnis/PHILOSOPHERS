@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/14 14:12:34 by adichou          ###   ########.fr       */
+/*   Updated: 2025/05/20 20:31:54 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,9 @@
 
 #include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct s_program
 {
@@ -133,6 +135,11 @@ void	display_program_struct(t_program *program)
 	printf("nbr_of_time_they_eat = %d\n", program->nbr_of_time_they_eat);
 }
 
+void	display_philo_struct(t_philosopher *program)
+{
+	printf("philo_id = %d\n", program->id);
+}
+
 pthread_mutex_t	*init_all_forks(int	nbr_of_philosophers)
 {
 	int	i;
@@ -150,7 +157,7 @@ pthread_mutex_t	*init_all_forks(int	nbr_of_philosophers)
 	return (res);
 }
 
-t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab)
+t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_program *program)
 {
 	t_philosopher	*tab;
 	int				i;
@@ -166,6 +173,7 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab)
 		tab[i].l_fork = &fork_tab[i + 1];
 		if (i != 0)
 			tab[i].r_fork = &fork_tab[i];
+		tab[i].program = program;
 		i ++;
 	}
 	return (tab);
@@ -176,27 +184,33 @@ void	*run_philo(void *arg)
 	t_philosopher	*philosoph;
 
 	philosoph = (t_philosopher *)arg;
+	display_philo_struct(philosoph);
 	while (1)
 	{
 		printf("Philosopher number %d is eating\n", philosoph->id);
+		usleep(philosoph->program->time_to_eat * 1000);
+		printf("Philosopher number %d is sleeping\n", philosoph->id);
+		usleep(philosoph->program->time_to_sleep * 1000);
+		printf("Philosopher number %d is thinking\n", philosoph->id);
+		usleep(philosoph->program->time_to_die * 1000);
 	}
 	pthread_exit(NULL);
 }
 
-void	start_threads(t_philosopher **p_tab, pthread_mutex_t *f_tab, t_program *program)
+void	start_threads(t_philosopher *p_tab, pthread_mutex_t *f_tab, t_program *program)
 {
 	int	i;
 
 	i = 0;
 	while (i < program->nb_philo)
 	{
-		pthread_create((void *)p_tab[i]->thread, NULL, run_philo, p_tab[i]);
+		pthread_create(&p_tab[i].thread, NULL, run_philo, &p_tab[i]);
 		i ++;
 	}
 	i = 0;
 	while (i < program->nb_philo)
 	{
-		pthread_join(p_tab[i]->thread, NULL);
+		pthread_join(p_tab[i].thread, NULL);
 		i ++;
 	}
 }
@@ -208,10 +222,10 @@ void	philosophers(char **av)
 	t_philosopher	*philo_tab;
 
 	program = init_program(av);
-	display_program_struct(program);
+	// display_program_struct(program);
 	fork_tab = init_all_forks(atoi(av[1]));
-	philo_tab = init_all_philosophers(av, fork_tab);
-	start_threads(&philo_tab, fork_tab, program);
+	philo_tab = init_all_philosophers(av, fork_tab, program);
+	start_threads(philo_tab, fork_tab, program);
 }
 
 int main(int ac, char **av)
