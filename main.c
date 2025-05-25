@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
+/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/20 20:31:54 by adichou          ###   ########.fr       */
+/*   Updated: 2025/05/25 03:19:39 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,21 +179,40 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 	return (tab);
 }
 
+void	start(t_philosopher *philosoph)
+{
+	while (!is_dead(philosoph))
+	{
+		get_forks(philosoph);
+		eat(philosoph);
+		put_forks_back(philosoph);
+		sleep(philosoph);
+		think(philosoph);
+	}
+}
+
 void	*run_philo(void *arg)
 {
-	t_philosopher	*philosoph;
+	t_philosopher	*philosoph; 
 
 	philosoph = (t_philosopher *)arg;
 	display_philo_struct(philosoph);
-	while (1)
+	if (philosoph->id % 2 != 0)
+		start(philosoph);
+	else
 	{
-		printf("Philosopher number %d is eating\n", philosoph->id);
-		usleep(philosoph->program->time_to_eat * 1000);
-		printf("Philosopher number %d is sleeping\n", philosoph->id);
-		usleep(philosoph->program->time_to_sleep * 1000);
-		printf("Philosopher number %d is thinking\n", philosoph->id);
-		usleep(philosoph->program->time_to_die * 1000);
+		usleep(philosoph->program->time_to_eat);	
+		start(philosoph);
 	}
+	// while (1)
+	// {
+	// 	printf("Philosopher number %d is eating\n", philosoph->id);
+	// 	usleep(philosoph->program->time_to_eat * 1000);
+	// 	printf("Philosopher number %d is sleeping\n", philosoph->id);
+	// 	usleep(philosoph->program->time_to_sleep * 1000);
+	// 	printf("Philosopher number %d is thinking\n", philosoph->id);
+	// 	usleep(philosoph->program->time_to_die * 1000);
+	// }
 	pthread_exit(NULL);
 }
 
