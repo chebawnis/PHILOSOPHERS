@@ -6,7 +6,7 @@
 /*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/25 03:19:39 by marvin           ###   ########.fr       */
+/*   Updated: 2025/05/25 05:10:48 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,7 @@ typedef struct s_philosopher
 	pthread_mutex_t		*l_fork;
 	pthread_mutex_t		*r_fork;
 	t_program			*program;
+	int					is_dead;
 }	t_philosopher;
 
 int	ft_atoi(const char *nptr)
@@ -170,6 +171,7 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 	while (i < atoi(av[1]))
 	{
 		tab[i].id = i + 1;
+		tab[i].is_dead = 0;
 		tab[i].l_fork = &fork_tab[i + 1];
 		if (i != 0)
 			tab[i].r_fork = &fork_tab[i];
@@ -179,9 +181,38 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 	return (tab);
 }
 
+void	eat(t_philosopher *philosoph)
+{
+	printf("Philosoph number %d is eating\n", philosoph->id);
+	usleep(philosoph->program->time_to_eat * 1000);
+}
+
+void	sleep(t_philosopher *philosoph)
+{
+	printf("Philosoph number %d is sleeping\n", philosoph->id);
+	usleep(philosoph->program->time_to_sleep * 1000);
+}
+
+void	get_forks(t_philosopher *philosoph)
+{
+	pthread_mutex_lock(philosoph->l_fork);
+	pthread_mutex_lock(philosoph->r_fork);
+}
+
+void	think(t_philosopher *philosoph)
+{
+	
+}
+
+void	put_forks_back(t_philosopher *philosoph)
+{
+	pthread_mutex_unlock(philosoph->l_fork);
+	pthread_mutex_unlock(philosoph->r_fork);
+}
+
 void	start(t_philosopher *philosoph)
 {
-	while (!is_dead(philosoph))
+	while (philosoph->is_dead != 1)
 	{
 		get_forks(philosoph);
 		eat(philosoph);
@@ -204,15 +235,6 @@ void	*run_philo(void *arg)
 		usleep(philosoph->program->time_to_eat);	
 		start(philosoph);
 	}
-	// while (1)
-	// {
-	// 	printf("Philosopher number %d is eating\n", philosoph->id);
-	// 	usleep(philosoph->program->time_to_eat * 1000);
-	// 	printf("Philosopher number %d is sleeping\n", philosoph->id);
-	// 	usleep(philosoph->program->time_to_sleep * 1000);
-	// 	printf("Philosopher number %d is thinking\n", philosoph->id);
-	// 	usleep(philosoph->program->time_to_die * 1000);
-	// }
 	pthread_exit(NULL);
 }
 
