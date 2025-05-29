@@ -6,7 +6,7 @@
 /*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/30 00:48:11 by marvin           ###   ########.fr       */
+/*   Updated: 2025/05/30 01:05:12 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -279,7 +279,10 @@ void	philosophers(char **av)
 	// display_program_struct(program);
 	fork_tab = init_all_forks(atoi(av[1]));
 	philo_tab = init_all_philosophers(av, fork_tab, program);
-	start_threads(philo_tab, fork_tab, program);
+	start_threads(philo_tab, fork_tab, program);\
+	free(program);
+	free(fork_tab);
+	free(philo_tab);
 }
 
 int main(int ac, char **av)
