@@ -6,7 +6,7 @@
 /*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/05/25 05:10:48 by marvin           ###   ########.fr       */
+/*   Updated: 2025/05/30 00:48:11 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,19 +162,19 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 {
 	t_philosopher	*tab;
 	int				i;
+	int				nb_philo;
 
-	tab = malloc(sizeof(t_philosopher) * atoi(av[1]));
-	i = 0;
+	nb_philo = atoi(av[1]);
+	tab = malloc(sizeof(t_philosopher) * nb_philo);
 	if (!tab)
 		return NULL;
-	tab[i].r_fork = &fork_tab[atoi(av[1])];
-	while (i < atoi(av[1]))
+	i = 0;
+	while (i < nb_philo)
 	{
 		tab[i].id = i + 1;
 		tab[i].is_dead = 0;
-		tab[i].l_fork = &fork_tab[i + 1];
-		if (i != 0)
-			tab[i].r_fork = &fork_tab[i];
+		tab[i].l_fork = &fork_tab[i];
+		tab[i].r_fork = &fork_tab[(i + 1) % nb_philo];
 		tab[i].program = program;
 		i ++;
 	}
@@ -187,7 +187,7 @@ void	eat(t_philosopher *philosoph)
 	usleep(philosoph->program->time_to_eat * 1000);
 }
 
-void	sleep(t_philosopher *philosoph)
+void	psleep(t_philosopher *philosoph)
 {
 	printf("Philosoph number %d is sleeping\n", philosoph->id);
 	usleep(philosoph->program->time_to_sleep * 1000);
@@ -199,25 +199,38 @@ void	get_forks(t_philosopher *philosoph)
 	pthread_mutex_lock(philosoph->r_fork);
 }
 
-void	think(t_philosopher *philosoph)
-{
-	
-}
-
 void	put_forks_back(t_philosopher *philosoph)
 {
 	pthread_mutex_unlock(philosoph->l_fork);
 	pthread_mutex_unlock(philosoph->r_fork);
 }
 
+void	think(t_philosopher *philosoph)
+{
+	printf("Philosoph number %d is thinking\n", philosoph->id);
+}
+
+
 void	start(t_philosopher *philosoph)
 {
-	while (philosoph->is_dead != 1)
+	int	meals_eaten = 0;
+	int	max_meals = philosoph->program->nbr_of_time_they_eat;
+
+	while (!philosoph->program->should_program_stop)
 	{
 		get_forks(philosoph);
+		printf("%d is eating\n", philosoph->id);
 		eat(philosoph);
 		put_forks_back(philosoph);
-		sleep(philosoph);
+
+		meals_eaten++;
+		if (max_meals > 0 && meals_eaten >= max_meals)
+			break;
+
+		printf("%d is sleeping\n", philosoph->id);
+		psleep(philosoph);
+
+		printf("%d is thinking\n", philosoph->id);
 		think(philosoph);
 	}
 }
@@ -227,7 +240,7 @@ void	*run_philo(void *arg)
 	t_philosopher	*philosoph; 
 
 	philosoph = (t_philosopher *)arg;
-	display_philo_struct(philosoph);
+	// display_philo_struct(philosoph);
 	if (philosoph->id % 2 != 0)
 		start(philosoph);
 	else
