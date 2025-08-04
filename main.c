@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/08/01 13:46:07 by marvin           ###   ########.fr       */
+/*   Updated: 2025/08/04 17:00:11 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 
 typedef struct s_program
 {
@@ -46,7 +46,15 @@ typedef struct s_philosopher
 	pthread_mutex_t		*r_fork;
 	t_program			*program;
 	int					is_dead;
+	int					state; // 1->eating, 2->sleeping, 3->thinking
 }	t_philosopher;
+
+long	get_time()
+{
+	struct timeval time;
+	gettimeofday(&time, NULL);
+	return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
+}
 
 int	ft_atoi(const char *nptr)
 {
@@ -193,6 +201,11 @@ void	psleep(t_philosopher *philosoph)
 	usleep(philosoph->program->time_to_sleep * 1000);
 }
 
+void	think(t_philosopher *philosoph)
+{
+	printf("Philosoph number %d is thinking\n", philosoph->id);
+}
+
 void	get_forks(t_philosopher *philosoph)
 {
 	pthread_mutex_lock(philosoph->l_fork);
@@ -205,10 +218,6 @@ void	put_forks_back(t_philosopher *philosoph)
 	pthread_mutex_unlock(philosoph->r_fork);
 }
 
-void	think(t_philosopher *philosoph)
-{
-	printf("Philosoph number %d is thinking\n", philosoph->id);
-}
 
 
 void	start(t_philosopher *philosoph)
@@ -227,10 +236,7 @@ void	start(t_philosopher *philosoph)
 		if (max_meals > 0 && meals_eaten >= max_meals)
 			break;
 
-		printf("%d is sleeping\n", philosoph->id);
 		psleep(philosoph);
-
-		printf("%d is thinking\n", philosoph->id);
 		think(philosoph);
 	}
 }
