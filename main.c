@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/08/04 17:00:11 by adichou          ###   ########.fr       */
+/*   Updated: 2025/08/13 04:16:13 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,12 +30,15 @@
 
 typedef struct s_program
 {
-	int		nb_philo;
-	int		time_to_die;
-	int		time_to_eat;
-	int		time_to_sleep;
-	int		nbr_of_time_they_eat;
-	int		should_program_stop;
+	long				start_time;
+	int					nb_philo;
+	int					time_to_die;
+	int					time_to_eat;
+	int					time_to_sleep;
+	int					nbr_of_time_they_eat;
+	int					should_program_stop;
+	pthread_mutex_t		printf_mutex;
+	pthread_mutex_t		data_mutex;
 }	t_program;
 
 typedef struct s_philosopher
@@ -45,8 +48,9 @@ typedef struct s_philosopher
 	pthread_mutex_t		*l_fork;
 	pthread_mutex_t		*r_fork;
 	t_program			*program;
-	int					is_dead;
-	int					state; // 1->eating, 2->sleeping, 3->thinking
+	long				last_meal_time;
+	int					meals_eaten;
+	int					state;		// 1->eating, 2->sleeping, 3->thinking
 }	t_philosopher;
 
 long	get_time()
@@ -54,6 +58,11 @@ long	get_time()
 	struct timeval time;
 	gettimeofday(&time, NULL);
 	return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
+}
+
+long	get_p_time(t_philosopher *philosoph)
+{
+	return(get_time() - philosoph->program->start_time);
 }
 
 int	ft_atoi(const char *nptr)
@@ -123,6 +132,7 @@ t_program		*init_program(char **av)
 	t_program	*res;
 	
 	res = malloc(sizeof(t_program));
+	res->start_time = get_time();
 	if (!res)
 		return NULL;
 		res->nb_philo = atoi(av[1]);
@@ -180,7 +190,6 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 	while (i < nb_philo)
 	{
 		tab[i].id = i + 1;
-		tab[i].is_dead = 0;
 		tab[i].l_fork = &fork_tab[i];
 		tab[i].r_fork = &fork_tab[(i + 1) % nb_philo];
 		tab[i].program = program;
@@ -191,25 +200,40 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 
 void	eat(t_philosopher *philosoph)
 {
-	printf("Philosoph number %d is eating\n", philosoph->id);
+	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	printf("%ld %d is eating\n", get_p_time(philosoph), philosoph->id);
+	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
 	usleep(philosoph->program->time_to_eat * 1000);
 }
 
 void	psleep(t_philosopher *philosoph)
 {
-	printf("Philosoph number %d is sleeping\n", philosoph->id);
+	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	printf("%ld %d is sleeping\n", get_p_time(philosoph), philosoph->id);
+	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
 	usleep(philosoph->program->time_to_sleep * 1000);
 }
 
 void	think(t_philosopher *philosoph)
 {
-	printf("Philosoph number %d is thinking\n", philosoph->id);
+	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	printf("%ld %d is thinking\n", get_p_time(philosoph), philosoph->id);
+	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
 }
 
 void	get_forks(t_philosopher *philosoph)
 {
 	pthread_mutex_lock(philosoph->l_fork);
+
+	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
+	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+
 	pthread_mutex_lock(philosoph->r_fork);
+
+	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
+	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
 }
 
 void	put_forks_back(t_philosopher *philosoph)
@@ -217,8 +241,6 @@ void	put_forks_back(t_philosopher *philosoph)
 	pthread_mutex_unlock(philosoph->l_fork);
 	pthread_mutex_unlock(philosoph->r_fork);
 }
-
-
 
 void	start(t_philosopher *philosoph)
 {
@@ -228,7 +250,6 @@ void	start(t_philosopher *philosoph)
 	while (!philosoph->program->should_program_stop)
 	{
 		get_forks(philosoph);
-		printf("%d is eating\n", philosoph->id);
 		eat(philosoph);
 		put_forks_back(philosoph);
 
@@ -267,12 +288,14 @@ void	start_threads(t_philosopher *p_tab, pthread_mutex_t *f_tab, t_program *prog
 		pthread_create(&p_tab[i].thread, NULL, run_philo, &p_tab[i]);
 		i ++;
 	}
+	// create monitoring thread; pthread_create();
 	i = 0;
 	while (i < program->nb_philo)
 	{
 		pthread_join(p_tab[i].thread, NULL);
 		i ++;
 	}
+	//pthread_join();
 }
 
 void	philosophers(char **av)
