@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/08/13 04:16:13 by adichou          ###   ########.fr       */
+/*   Updated: 2025/08/19 06:23:33 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -193,17 +193,28 @@ t_philosopher	*init_all_philosophers(char **av, pthread_mutex_t *fork_tab, t_pro
 		tab[i].l_fork = &fork_tab[i];
 		tab[i].r_fork = &fork_tab[(i + 1) % nb_philo];
 		tab[i].program = program;
+		tab[i].last_meal_time = get_time();
+		tab[i].meals_eaten = 0;
 		i ++;
 	}
 	return (tab);
 }
 
-void	eat(t_philosopher *philosoph)
+void eat(t_philosopher *philosoph)
 {
+	pthread_mutex_lock(&philosoph->program->data_mutex);
+	philosoph->meals_eaten++;
+	philosoph->last_meal_time = get_time(); // <-- ici, juste avant de commencer à manger
+	pthread_mutex_unlock(&philosoph->program->data_mutex);
+
 	pthread_mutex_lock(&(philosoph->program->printf_mutex));
 	printf("%ld %d is eating\n", get_p_time(philosoph), philosoph->id);
 	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
-	usleep(philosoph->program->time_to_eat * 1000);
+
+	long end = get_time() + philosoph->program->time_to_eat;
+	while (get_time() < end && !philosoph->program->should_program_stop)
+	usleep(500); // 0,5 ms
+
 }
 
 void	psleep(t_philosopher *philosoph)
@@ -228,38 +239,44 @@ void	get_forks(t_philosopher *philosoph)
 	pthread_mutex_lock(&(philosoph->program->printf_mutex));
 	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
 	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	if (philosoph->program->nb_philo>1)
+	{
+		pthread_mutex_lock(philosoph->r_fork);
 
-	pthread_mutex_lock(philosoph->r_fork);
-
-	pthread_mutex_lock(&(philosoph->program->printf_mutex));
-	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
-	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+		pthread_mutex_lock(&(philosoph->program->printf_mutex));
+		printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
+		pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	}
 }
 
 void	put_forks_back(t_philosopher *philosoph)
 {
 	pthread_mutex_unlock(philosoph->l_fork);
-	pthread_mutex_unlock(philosoph->r_fork);
+	if (philosoph->program->nb_philo>1)
+		pthread_mutex_unlock(philosoph->r_fork);
 }
 
 void	start(t_philosopher *philosoph)
 {
 	int	meals_eaten = 0;
 	int	max_meals = philosoph->program->nbr_of_time_they_eat;
-
-	while (!philosoph->program->should_program_stop)
-	{
-		get_forks(philosoph);
-		eat(philosoph);
-		put_forks_back(philosoph);
-
-		meals_eaten++;
-		if (max_meals > 0 && meals_eaten >= max_meals)
-			break;
-
-		psleep(philosoph);
-		think(philosoph);
-	}
+    while (!philosoph->program->should_program_stop)
+    {
+        get_forks(philosoph);
+        eat(philosoph);
+        put_forks_back(philosoph);
+        if (philosoph->program->should_program_stop)
+            break;
+        meals_eaten++;
+        if (max_meals > 0 && meals_eaten >= max_meals)
+            break;
+        psleep(philosoph);
+        if (philosoph->program->should_program_stop)
+            break;
+        think(philosoph);
+        if (philosoph->program->should_program_stop)
+            break;
+    }
 }
 
 void	*run_philo(void *arg)
@@ -282,21 +299,63 @@ void	start_threads(t_philosopher *p_tab, pthread_mutex_t *f_tab, t_program *prog
 {
 	int	i;
 
+	// Création des threads philosophes
 	i = 0;
 	while (i < program->nb_philo)
 	{
 		pthread_create(&p_tab[i].thread, NULL, run_philo, &p_tab[i]);
-		i ++;
+		i++;
 	}
-	// create monitoring thread; pthread_create();
+
+	// Monitoring (détection mort et repas)
+	while (!program->should_program_stop)
+	{
+		i = 0;
+		while (i < program->nb_philo && !program->should_program_stop)
+		{
+			if (get_time() - p_tab[i].last_meal_time > program->time_to_die)
+			{
+				program->should_program_stop = 1; // Stoppe avant le print pour éviter des prints concurrents
+				pthread_mutex_lock(&program->printf_mutex);
+				printf("%ld %d died\n",
+					get_time() - program->start_time,
+					p_tab[i].id);
+				fflush(stdout); // flush direct pour s'assurer que le message s'affiche
+				pthread_mutex_unlock(&program->printf_mutex);
+				break; // sortir de la boucle pour ne plus checker d'autres philo
+			}
+
+			else if (program->nbr_of_time_they_eat > 0
+				&& p_tab[i].meals_eaten >= program->nbr_of_time_they_eat)
+			{
+				// Si tous les philosophes ont atteint le quota, on stoppe
+				int j = 0;
+				int finished = 1;
+				while (j < program->nb_philo)
+				{
+					if (p_tab[j].meals_eaten < program->nbr_of_time_they_eat)
+						finished = 0;
+					j++;
+				}
+				if (finished)
+					program->should_program_stop = 1;
+			}
+			pthread_mutex_unlock(&program->data_mutex);
+			i++;
+		}
+		usleep(1000); // éviter de bouffer 100% CPU
+	}
+
+	// Attente des threads
 	i = 0;
 	while (i < program->nb_philo)
 	{
 		pthread_join(p_tab[i].thread, NULL);
-		i ++;
+		i++;
 	}
-	//pthread_join();
 }
+
+
 
 void	philosophers(char **av)
 {
