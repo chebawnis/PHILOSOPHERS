@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/04 05:13:34 by marvin            #+#    #+#             */
-/*   Updated: 2025/05/04 05:13:34 by marvin           ###   ########.fr       */
+/*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
+/*   Updated: 2025/09/14 21:58:41 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,225 +22,108 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <limits.h>
+#include "../philosophers.h"
 
-typedef struct s_fork
-{
-	int					id;
-	pthread_mutex_t		thread;
-}	t_fork;
-
-typedef struct s_timeval
-{
-	time_t			tv_sec;
-	suseconds_t		tv_usec;
-} t_timeval;
-
-typedef struct s_philosopher
-{
-	int					id;
-	pthread_t			thread;
-	t_fork				*l_fork;
-	t_fork				*r_fork;
-	long				meal_counter;
-	long				time_limit_to_eat;
-}	t_philosopher;
-
-typedef struct s_program
-{
-	int		nb_philo;
-	int		time_to_die;
-	int		time_to_eat;
-	int		time_to_sleep;
-	int		nbr_of_time_they_eat;
-	int		should_program_stop;
-}	t_program;
-
-
-typedef struct s_count_add
-{
-	pthread_mutex_t		lock;
-	int					counter;
-}	t_count_add;
-
-
-
-int	ft_atoi(const char *nptr)
+int	check_all_ate(t_philosopher *philos, t_program *prog)
 {
 	int	i;
-	int	sgn;
-	int	res;
+	int	all;
 
+	if (prog->nbr_of_time_they_eat <= 0)
+		return (0);
+	all = 1;
 	i = 0;
-	sgn = 1;
-	res = 0;
-	while ((nptr[i] == ' ') || (nptr[i] >= 9 && nptr[i] <= 13))
-		i ++;
-	if (nptr[i] == '-' || nptr[i] == '+')
+	while (i < prog->nb_philo)
 	{
-		if (nptr[i] == '-')
-			sgn = -1;
+		pthread_mutex_lock(&prog->data_mutex);
+		if (philos[i].meals_eaten < prog->nbr_of_time_they_eat)
+			all = 0;
+		pthread_mutex_unlock(&prog->data_mutex);
 		i++;
 	}
-	while (nptr[i] != '\0' && nptr[i] >= 48 && nptr[i] <= 57)
+	if (all)
 	{
-		res = res * 10 + (nptr[i] - 48);
-		i ++;
-	}
-	return (res * sgn);
-}
-
-int	is_char_num(char c)
-{
-	if (c >= '0' && c <= '9')
+		pthread_mutex_lock(&prog->data_mutex);
+		prog->should_program_stop = 1;
+		pthread_mutex_unlock(&prog->data_mutex);
 		return (1);
-	return (0);	
+	}
+	return (0);
 }
 
-int	isnum(char *str)
+void	*monitor(void *arg)
 {
-	int	i;
+	t_philosopher	*philos;
+	t_program		*prog;
+
+	philos = (t_philosopher *)arg;
+	prog = philos[0].program;
+	while (1)
+	{
+		if (check_death(philos, prog))
+			return (NULL);
+		if (check_all_ate(philos, prog))
+			return (NULL);
+		usleep(5000);
+	}
+	return (NULL);
+}
+
+void	start_threads(t_philosopher *p_tab, pthread_mutex_t *ftab, t_program *p)
+{
+	int			i;
+	pthread_t	monitor_thread;
 
 	i = 0;
-	while (str[i])
+	while (i < p->nb_philo)
 	{
-		if (!is_char_num(str[i]))
-			return (0);		
+		if (pthread_create(&p_tab[i].thread, NULL, run_philo, &p_tab[i]) != 0)
+		{
+			p->should_program_stop = 1;
+			return ;
+		}
 		i ++;
 	}
-	return (1);
-}
-
-int	verify_args(int ac, char **av)
-{
-	if (ac != 5 && ac != 6)
-		return (0);
-	if (ft_atoi(av[1]) <= 0 || ft_atoi(av[2]) <= 0
-		|| ft_atoi(av[3]) <= 0 || ft_atoi(av[4]) <= 0)
-		return (0);
-	if (!isnum(av[1]) || !isnum(av[2]) || !isnum(av[3]) || !isnum(av[4]))
-		return (0);
-	if (ac == 6 && (ft_atoi(av[5]) <= 0 || !isnum(av[5])))
-		return (0);
-	if (ft_atoi(av[2]) < 60 || ft_atoi(av[3]) < 60 || ft_atoi(av[4]) < 60)
-		return (0);	
-	return (1);
-}
-void	*function_1(void *arg)
-{
-	int	i;
-
+	if (pthread_create(&monitor_thread, NULL, monitor, p_tab) != 0)
+	{
+		p->should_program_stop = 1;
+		return ;
+	}
 	i = 0;
-	t_count_add *struct_1;
-	struct_1 = (t_count_add *)arg;
-	while (i < 100000)
-	{
-		pthread_mutex_lock(&(struct_1->lock));
-		struct_1->counter ++;
-		pthread_mutex_unlock(&(struct_1->lock));
-		i ++;
-	}
-	pthread_exit(NULL);
-}
-
-void	*function_2(void *arg)
-{
-	int	i;
-
-	i = 0;
-	t_count_add *struct_1;
-	struct_1 = (t_count_add *)arg;
-	while (i < 100000)
-	{
-		pthread_mutex_lock(&(struct_1->lock));
-		struct_1->counter ++;
-		pthread_mutex_unlock(&(struct_1->lock));
-		i ++;
-	}
-	pthread_exit(NULL);
-}
-
-// int main(int ac, char **av)
-// {
-// 	t_count_add		*struct_1;
-// 	pthread_t		thread_1;
-// 	pthread_t		thread_2;
-// 	struct_1 = malloc(sizeof(t_count_add));
-// 	pthread_mutex_init(&(struct_1->lock), NULL);
-// 	struct_1->counter = 0;
-// 	pthread_create(&thread_1, NULL, function_1, struct_1);
-// 	pthread_create(&thread_2, NULL, function_2, struct_1);
-// 	pthread_join(thread_1, NULL);
-// 	pthread_join(thread_2, NULL);
-// 	printf("counter = %d\n", struct_1->counter);
-// 	return (0);
-// }
-
-t_philosopher	*init_all_philosophers(int	nbr_of_philosophers)
-{
-	t_philosopher	*tab;
-	int				i;
-
-	tab = malloc(sizeof(t_philosopher) * nbr_of_philosophers);
-	i = 0;
-	if (!tab)
-		return NULL;
-	while (i < nbr_of_philosophers)
-	{
-		tab[i].id = i + 1;
-		i ++;
-	}
-	
-	return (tab);
-}
-
-t_program		*init_program(char **av)
-{
-	t_program	*res;
-
-	res = malloc(sizeof(t_program));
-	if (!res)
-		return NULL;
-	res->nb_philo = atoi(av[1]);
-	res->time_to_die = atoi(av[2]);
-	res->time_to_eat = atoi(av[3]);
-	res->time_to_sleep = atoi(av[4]);
-	if (av[5])
-		res->nbr_of_time_they_eat = atoi(av[5]);
-	res->should_program_stop = 0;
-	return (res);
-}
-
-void	display_program_struct(t_program *program)
-{
-	printf("nb_philo = %d\n", program->nb_philo);
-	printf("time_to_die = %d\n", program->time_to_die);
-	printf("time_to_eat = %d\n", program->time_to_eat);
-	printf("time_to_sleep = %d\n", program->time_to_sleep);
-	printf("nbr_of_time_they_eat = %d\n", program->nbr_of_time_they_eat);
+	while (i < p->nb_philo)
+		pthread_join(p_tab[i ++].thread, NULL);
+	pthread_join(monitor_thread, NULL);
 }
 
 void	philosophers(char **av)
 {
 	t_program		*program;
-	t_philosopher	*tab;
+	pthread_mutex_t	*fork_tab;
+	t_philosopher	*philo_tab;
+	int				i;
 
+	i = 0;
 	program = init_program(av);
-	display_program_struct(program);
-	tab = init_all_philosophers(av[1]);
+	if (!program)
+		return ;
+	fork_tab = init_all_forks(ft_atoi(av[1]));
+	philo_tab = init_philos(av, fork_tab, program);
+	start_threads(philo_tab, fork_tab, program);
+	while (i < program->nb_philo)
+		pthread_mutex_destroy(&fork_tab[i ++]);
+	pthread_mutex_destroy(&program->printf_mutex);
+	pthread_mutex_destroy(&program->data_mutex);
+	free(program);
+	free(fork_tab);
+	free(philo_tab);
 }
 
-int main(int ac, char **av)
+int	main(int ac, char **av)
 {
 	if (!verify_args(ac, av))
 	{
 		printf("Arguments invalides\n");
-		return (0);
+		return (1);
 	}
 	philosophers(av);
 	return (0);
