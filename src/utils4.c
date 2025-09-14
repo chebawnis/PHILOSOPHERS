@@ -6,36 +6,39 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 21:57:54 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 21:58:41 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 22:22:50 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../philosophers.h"
 
-void	get_forks(t_philosopher *philosoph)
+void	get_forks(t_philosopher *ps)
 {
-	pthread_mutex_lock(philosoph->l_fork);
-	pthread_mutex_lock(&(philosoph->program->printf_mutex));
-	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
-	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
-	if (philosoph->program->nb_philo == 1)
+	pthread_mutex_t	*first;
+	pthread_mutex_t	*second;
+
+	if (ps->l_fork < ps->r_fork)
 	{
-		pthread_mutex_lock(&(philosoph->program->printf_mutex));
-		printf("%ld %d has taken a fork\n", get_p_time(philosoph),
-			philosoph->id);
-		pthread_mutex_unlock(&(philosoph->program->printf_mutex));
-		philo_sleep(philosoph->program, philosoph->program->time_to_die);
-		pthread_mutex_lock(&(philosoph->program->printf_mutex));
-		printf("%ld %d died\n", get_p_time(philosoph), philosoph->id);
-		pthread_mutex_unlock(&(philosoph->program->printf_mutex));
-		philosoph->program->should_program_stop = 1;
-		pthread_mutex_unlock(philosoph->l_fork);
+		first = ps->l_fork;
+		second = ps->r_fork;
+	}
+	else
+	{
+		first = ps->r_fork;
+		second = ps->l_fork;
+	}
+	take_fork(ps, first);
+	if (ps->program->nb_philo == 1)
+	{
+		philo_sleep(ps->program, ps->program->time_to_die);
+		pthread_mutex_lock(&(ps->program->printf_mutex));
+		printf("%ld %d died\n", get_p_time(ps), ps->id);
+		pthread_mutex_unlock(&(ps->program->printf_mutex));
+		ps->program->should_program_stop = 1;
+		pthread_mutex_unlock(first);
 		pthread_exit(NULL);
 	}
-	pthread_mutex_lock(philosoph->r_fork);
-	pthread_mutex_lock(&(philosoph->program->printf_mutex));
-	printf("%ld %d has taken a fork\n", get_p_time(philosoph), philosoph->id);
-	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	take_fork(ps, second);
 }
 
 void	put_forks_back(t_philosopher *philosoph)

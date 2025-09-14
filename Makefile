@@ -7,7 +7,7 @@ INCLUDES := -I .
 SRCDIR := src
 OBJDIR := objs
 
-SRCS := main.c utils1.c utils2.c utils3.c utils4.c
+SRCS := main.c utils1.c utils2.c utils3.c utils4.c utils5.c
 SRCS := $(addprefix $(SRCDIR)/,$(SRCS))
 OBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 

@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 21:58:41 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 22:10:27 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,7 +69,7 @@ void	*monitor(void *arg)
 	return (NULL);
 }
 
-void	start_threads(t_philosopher *p_tab, pthread_mutex_t *ftab, t_program *p)
+void	start_threads(t_philosopher *p_tab, t_program *p)
 {
 	int			i;
 	pthread_t	monitor_thread;
@@ -108,7 +108,7 @@ void	philosophers(char **av)
 		return ;
 	fork_tab = init_all_forks(ft_atoi(av[1]));
 	philo_tab = init_philos(av, fork_tab, program);
-	start_threads(philo_tab, fork_tab, program);
+	start_threads(philo_tab, program);
 	while (i < program->nb_philo)
 		pthread_mutex_destroy(&fork_tab[i ++]);
 	pthread_mutex_destroy(&program->printf_mutex);
