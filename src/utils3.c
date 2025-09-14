@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 21:57:14 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 21:58:41 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 23:28:43 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,8 @@ t_philosopher	*init_philos(char **av, pthread_mutex_t *ftab, t_program *p)
 	{
 		tab[i].id = i + 1;
 		tab[i].l_fork = &ftab[i];
-		tab[i].r_fork = &ftab[(i + 1) % nb_philo];
+		if (nb_philo > 1)
+			tab[i].r_fork = &ftab[(i + 1) % nb_philo];
 		tab[i].program = p;
 		tab[i].last_meal_time = p->start_time;
 		tab[i].meals_eaten = 0;
@@ -63,13 +64,13 @@ t_philosopher	*init_philos(char **av, pthread_mutex_t *ftab, t_program *p)
 void	eat(t_philosopher *philosoph)
 {
 	pthread_mutex_lock(&philosoph->program->data_mutex);
-	philosoph->last_meal_time = get_time();
-	philosoph->state = 1;
-	pthread_mutex_unlock(&philosoph->program->data_mutex);
 	pthread_mutex_lock(&(philosoph->program->printf_mutex));
 	if (!philosoph->program->should_program_stop)
 		printf("%ld %d is eating\n", get_p_time(philosoph), philosoph->id);
+	philosoph->last_meal_time = get_time();
+	philosoph->state = 1;
 	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	pthread_mutex_unlock(&philosoph->program->data_mutex);
 	philo_sleep(philosoph->program, philosoph->program->time_to_eat);
 	pthread_mutex_lock(&philosoph->program->data_mutex);
 	philosoph->meals_eaten ++;
@@ -78,17 +79,25 @@ void	eat(t_philosopher *philosoph)
 
 void	psleep(t_philosopher *philosoph)
 {
-	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	pthread_mutex_lock(&philosoph->program->data_mutex);
 	if (!philosoph->program->should_program_stop)
+	{
+		pthread_mutex_lock(&(philosoph->program->printf_mutex));
 		printf("%ld %d is sleeping\n", get_p_time(philosoph), philosoph->id);
-	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+		pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	}
+	pthread_mutex_unlock(&philosoph->program->data_mutex);
 	philo_sleep(philosoph->program, philosoph->program->time_to_sleep);
 }
 
 void	think(t_philosopher *philosoph)
 {
-	pthread_mutex_lock(&(philosoph->program->printf_mutex));
+	pthread_mutex_lock(&philosoph->program->data_mutex);
 	if (!philosoph->program->should_program_stop)
+	{
+		pthread_mutex_lock(&(philosoph->program->printf_mutex));
 		printf("%ld %d is thinking\n", get_p_time(philosoph), philosoph->id);
-	pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+		pthread_mutex_unlock(&(philosoph->program->printf_mutex));
+	}
+	pthread_mutex_unlock(&philosoph->program->data_mutex);
 }

@@ -1,7 +1,7 @@
 # Makefile pour le projet philosophers
 NAME     := philo
 CC       := gcc
-CFLAGS   := -Wall -Wextra -Werror -pthread
+CFLAGS   := -Wall -Wextra -Werror -pthread -g
 INCLUDES := -I .
 
 SRCDIR := src

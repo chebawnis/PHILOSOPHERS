@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 21:21:49 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 22:10:27 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 23:56:06 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ void	*monitor(void *arg)
 			return (NULL);
 		if (check_all_ate(philos, prog))
 			return (NULL);
-		usleep(5000);
+		usleep(500);
 	}
 	return (NULL);
 }
@@ -77,6 +77,7 @@ void	start_threads(t_philosopher *p_tab, t_program *p)
 	i = 0;
 	while (i < p->nb_philo)
 	{
+		usleep(50);
 		if (pthread_create(&p_tab[i].thread, NULL, run_philo, &p_tab[i]) != 0)
 		{
 			p->should_program_stop = 1;

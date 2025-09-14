@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 21:57:54 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 22:22:50 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 23:41:51 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,11 @@ void	get_forks(t_philosopher *ps)
 {
 	pthread_mutex_t	*first;
 	pthread_mutex_t	*second;
-
-	if (ps->l_fork < ps->r_fork)
-	{
-		first = ps->l_fork;
+	
+	first = ps->l_fork;
+	if (ps->program->nb_philo != 1 && ps->l_fork < ps->r_fork)
 		second = ps->r_fork;
-	}
-	else
+	else if (ps->program->nb_philo != 1)
 	{
 		first = ps->r_fork;
 		second = ps->l_fork;
@@ -36,9 +34,9 @@ void	get_forks(t_philosopher *ps)
 		pthread_mutex_unlock(&(ps->program->printf_mutex));
 		ps->program->should_program_stop = 1;
 		pthread_mutex_unlock(first);
-		pthread_exit(NULL);
 	}
-	take_fork(ps, second);
+	if (ps->program->nb_philo != 1)
+		take_fork(ps, second);
 }
 
 void	put_forks_back(t_philosopher *philosoph)
@@ -48,12 +46,12 @@ void	put_forks_back(t_philosopher *philosoph)
 		pthread_mutex_unlock(philosoph->r_fork);
 }
 
-void	start(t_philosopher *philosoph)
+void	start(t_philosopher *philosoph, int stop)
 {
 	int	max_meals;
 
 	max_meals = philosoph->program->nbr_of_time_they_eat;
-	while (!philosoph->program->should_program_stop)
+	while (!stop)
 	{
 		get_forks(philosoph);
 		eat(philosoph);
@@ -70,6 +68,9 @@ void	start(t_philosopher *philosoph)
 		}
 		psleep(philosoph);
 		think(philosoph);
+		pthread_mutex_lock(&philosoph->program->data_mutex);
+		stop = philosoph->program->should_program_stop;
+		pthread_mutex_unlock(&philosoph->program->data_mutex);
 	}
 }
 
@@ -79,11 +80,11 @@ void	*run_philo(void *arg)
 
 	philosoph = (t_philosopher *)arg;
 	if (philosoph->id % 2 != 0)
-		start(philosoph);
+		start(philosoph, 0);
 	else
 	{
-		usleep(philosoph->program->time_to_eat * 500);
-		start(philosoph);
+		usleep(200);
+		start(philosoph, 0);
 	}
 	pthread_exit(NULL);
 }
@@ -101,6 +102,8 @@ int	check_death(t_philosopher *philos, t_program *prog)
 		if (!prog->should_program_stop
 			&& (now - philos[i].last_meal_time) > prog->time_to_die)
 		{
+			pthread_mutex_unlock(&prog->data_mutex);
+			pthread_mutex_lock(&prog->data_mutex);
 			prog->should_program_stop = 1;
 			pthread_mutex_unlock(&prog->data_mutex);
 			pthread_mutex_lock(&prog->printf_mutex);

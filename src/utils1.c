@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 21:55:27 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 21:58:41 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 23:14:29 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,8 +29,9 @@ void	philo_sleep(t_program *prog, int ms)
 {
 	long	start;
 
+	(void)prog;
 	start = get_time();
-	while (!prog->should_program_stop && (get_time() - start) < ms)
+	while ((get_time() - start) < ms)
 		usleep(500);
 }
 

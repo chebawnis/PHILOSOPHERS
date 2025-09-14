@@ -6,7 +6,7 @@
 /*   By: adichou <adichou@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/14 22:10:42 by adichou           #+#    #+#             */
-/*   Updated: 2025/09/14 22:23:50 by adichou          ###   ########.fr       */
+/*   Updated: 2025/09/14 23:41:51 by adichou          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,7 +68,7 @@ void			think(t_philosopher *philosoph);
 /* -------- utils4.c -------- */
 void			get_forks(t_philosopher *philosoph);
 void			put_forks_back(t_philosopher *philosoph);
-void			start(t_philosopher *philosoph);
+void			start(t_philosopher *philosoph, int stop);
 void			*run_philo(void *arg);
 int				check_death(t_philosopher *philos, t_program *prog);
 
